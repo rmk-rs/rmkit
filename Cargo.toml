@@ -9,7 +9,11 @@ description = "rmkit is a toolkit set for RMK keyboard firmware"
 license = "Apache-2.0"
 
 [dependencies]
-rmk-config = { version = "0.6.0" }
+# TODO: switch rmk-config and rynk-kle back to crates.io versions once the
+# versions with `[layout]` support (rmk-config > 0.6.0, rynk-kle) are published.
+rmk-config = { path = "../rmk/rmk-config" }
+# The KLE/Vial ↔ [layout] conversion engine; `rmkit layout` is CLI glue over it.
+rynk-kle = { path = "../rmk/rynk/rynk-kle" }
 clap = { version = "4.5.23", features = ["derive", "string"] }
 toml = "0.9.8"
 serde = "1.0"

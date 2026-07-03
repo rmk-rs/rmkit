@@ -27,10 +27,7 @@ pub(crate) fn parse_keyboard_toml(
 ) -> Result<ProjectInfo, Box<dyn std::error::Error>> {
     let keyboard_toml_config = KeyboardTomlConfig::new_from_toml_path(keyboard_toml);
 
-    let project_name = keyboard_toml_config
-        .get_device_config()
-        .name
-        .replace(" ", "_");
+    let project_name = keyboard_toml_config.identity()?.name.replace(" ", "_");
     let target_dir = if let Some(dir) = target_dir {
         dir
     } else {
@@ -47,40 +44,37 @@ pub(crate) fn parse_keyboard_toml(
     let mut enabled_feature = vec![];
 
     // Check keyboard.toml
+    let hardware = keyboard_toml_config.hardware()?;
 
     // Storage config
-    let storage_config = keyboard_toml_config.get_storage_config();
-    if !storage_config.enabled {
+    if hardware.storage.is_none() {
         disabled_default_feature.push("storage".to_string());
     }
 
     // Defmt config
-    let dep_config = keyboard_toml_config.get_dependency_config();
-    if !dep_config.defmt_log {
+    if !hardware.dependency.defmt_log {
         disabled_default_feature.push("defmt".to_string());
     }
 
-    if !keyboard_toml_config.get_host_config().vial_enabled {
+    if !keyboard_toml_config.host().vial_enabled {
         disabled_default_feature.push("vial".to_string());
         disabled_default_feature.push("vial_lock".to_string());
     }
 
     // Light config requires controller feature if any light pin is configured
-    let light_config = keyboard_toml_config.get_light_config();
-    if light_config.capslock.is_some()
-        || light_config.scrolllock.is_some()
-        || light_config.numslock.is_some()
+    if hardware.light.capslock.is_some()
+        || hardware.light.scrolllock.is_some()
+        || hardware.light.numslock.is_some()
     {
         enabled_feature.push("controller".to_string());
     }
 
-    let board_config = keyboard_toml_config.get_board_config().unwrap();
-    let matrix_type = match board_config {
-        rmk_config::BoardConfig::Split(_) => "split".to_string(),
-        rmk_config::BoardConfig::UniBody(_) => "normal".to_string(),
+    let matrix_type = match hardware.board {
+        rmk_config::resolved::hardware::BoardConfig::Split(_) => "split".to_string(),
+        rmk_config::resolved::hardware::BoardConfig::UniBody(_) => "normal".to_string(),
     };
 
-    let chip_model = keyboard_toml_config.get_chip_model().unwrap();
+    let chip_model = hardware.chip;
     let chip_or_board = if let Some(board) = chip_model.board {
         board
     } else {

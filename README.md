@@ -40,3 +40,39 @@ Now rmkit can be used to generate RMK project directly from `keyboard.toml` and 
     ```
 
     The available project template can be found at [rmk-template](https://github.com/HaoboGu/rmk-template)
+
+## Layout tools
+
+`rmkit layout` works with the physical `[layout]` section of a `keyboard.toml`. The conversion engine is the [`rynk-kle`](https://github.com/haobogu/rmk/tree/main/rynk/rynk-kle) library crate (which also compiles to a wasm package for the web); this CLI wraps it.
+
+Convert a [KLE](http://www.keyboard-layout-editor.com/) JSON export or a [Vial](https://get.vial.today/) definition (`vial.json`) into RMK's `[layout]` — key positions, cap sizes, split gaps, rotation, ISO/L-shaped caps, encoders, and VIA layout options are all converted, and the result is validated against RMK's own layout builder. KLE carries no keycodes, so author the `[keymap]` yourself:
+
+```shell
+rmkit layout convert path/to/vial.json -o layout.toml   # vial.json → [layout]
+rmkit layout convert path/to/kle_export.json            # raw KLE "Download JSON" export too
+rmkit layout convert --to-vial keyboard.toml            # reverse: [layout] → vial.json
+```
+
+Render a physical layout as box-drawing art, to check the geometry in a terminal without flashing anything. The input can be a `keyboard.toml`, or a `vial.json` / raw KLE export directly (converted on the fly); `--variant` picks one `[[layout.variant]]`:
+
+```shell
+$ rmkit layout show keyboard.toml
+variant 'default': 17 keys, 4u × 5u
+
+┌─────┬─────┬─────┬─────┐
+│ 0,0 │ 0,1 │ 0,2 │ 0,3 │
+│     │     │     │     │
+├─────┼─────┼─────┼─────┤
+│ 1,0 │ 1,1 │ 1,2 │     │
+│     │     │     │     │
+├─────┼─────┼─────┤ 1,3 │
+│ 2,0 │ 2,1 │ 2,2 │     │
+│     │     │     │     │
+├─────┼─────┼─────┼─────┤
+│ 3,0 │ 3,1 │ 3,2 │     │
+│     │     │     │     │
+├─────┴─────┼─────┤ 3,3 │
+│    4,0    │ 4,1 │     │
+│           │     │     │
+└───────────┴─────┴─────┘
+```
