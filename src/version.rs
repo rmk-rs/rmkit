@@ -57,7 +57,7 @@ pub async fn resolve_template_version(version: Option<&str>) -> Result<String, B
 /// Fetch all available versions from remote config
 async fn fetch_all_versions() -> Result<VersionMapping, Box<dyn Error>> {
     let config_url =
-        "https://raw.githubusercontent.com/HaoboGu/rmk-template/main/version-mapping.json";
+        "https://raw.githubusercontent.com/rmk-rs/rmk-template/main/version-mapping.json";
 
     let client = Client::new();
     let response = client.get(config_url).send().await?;

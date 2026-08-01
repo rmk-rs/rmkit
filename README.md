@@ -1,6 +1,6 @@
 # rmkit
 
-rmkit is a toolkit set for [RMK keyboard firmware](https://github.com/haobogu/rmk).
+rmkit is a toolkit set for [RMK keyboard firmware](https://github.com/rmk-rs/rmk).
 
 Now rmkit can be used to generate RMK project directly from `keyboard.toml` and `vial.json`, or interactively.
 
@@ -21,10 +21,10 @@ Now rmkit can be used to generate RMK project directly from `keyboard.toml` and 
 
    ```shell
     # macOS/linux
-    curl --proto '=https' --tlsv1.2 -LsSf https://github.com/haobogu/rmkit/releases/download/v0.0.1/rmkit-installer.sh | sh
+    curl --proto '=https' --tlsv1.2 -LsSf https://github.com/rmk-rs/rmkit/releases/download/v0.0.1/rmkit-installer.sh | sh
 
     # Windows(powershell)
-    powershell -ExecutionPolicy ByPass -c "irm https://github.com/haobogu/rmkit/releases/download/v0.0.1/rmkit-installer.ps1 | iex"
+    powershell -ExecutionPolicy ByPass -c "irm https://github.com/rmk-rs/rmkit/releases/download/v0.0.1/rmkit-installer.ps1 | iex"
    ```
 
 2. Create RMK project from `keyboard.toml` and `vial.json`:
@@ -39,4 +39,4 @@ Now rmkit can be used to generate RMK project directly from `keyboard.toml` and 
     rmkit init
     ```
 
-    The available project template can be found at [rmk-template](https://github.com/HaoboGu/rmk-template)
+    The available project template can be found at [rmk-template](https://github.com/rmk-rs/rmk-template)
