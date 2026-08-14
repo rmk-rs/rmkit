@@ -1,0 +1,6 @@
+[
+  { "name": "Sample KLE export", "author": "rmk" },
+  ["Esc", "Q", "W", "E"],
+  [{ "w": 1.5 }, "Tab", "A", "S"],
+  [{ "y": 0.5, "x": 1 }, "Z", { "w": 2 }, "Space"]
+]
