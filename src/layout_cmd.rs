@@ -30,7 +30,7 @@ pub fn convert(
     if to_vial {
         let text =
             std::fs::read_to_string(input).map_err(|e| format!("cannot read {input}: {e}"))?;
-        let vial = rynk_kle::to_kle::keyboard_toml_to_vial(&text)?;
+        let vial = rynk_kle::keyboard_toml_to_vial(&text)?;
         let out = format!(
             "{}\n",
             serde_json::to_string_pretty(&vial).map_err(|e| e.to_string())?
@@ -53,8 +53,12 @@ pub fn convert(
     // Round-trip the generated [layout] through RMK's own builder.
     let mut validation_error = None;
     if validate {
-        match rmk_config::layout_blob_from_toml(&generated.inner_layout_toml) {
-            Ok(blob) => eprintln!("validation: OK ({} byte layout blob)", blob.len()),
+        match rynk_kle::decode_layout(&generated.layout_toml) {
+            Ok(info) => eprintln!(
+                "validation: OK ({} variant{} decoded)",
+                info.variants.len(),
+                if info.variants.len() == 1 { "" } else { "s" }
+            ),
             Err(e) => validation_error = Some(e),
         }
     }
@@ -68,7 +72,7 @@ pub fn convert(
          # carries no keycodes, so author the [keymap] yourself: its `keys` follow the\n\
          # map's key order, plus one [\"cw\", \"ccw\"] pair per encoder in `encoders`.\n\n"
     );
-    let out = header + &generated.display_toml;
+    let out = header + &generated.layout_toml;
     match output {
         Some(path) => {
             std::fs::write(path, &out).map_err(|e| format!("cannot write {path}: {e}"))?;
@@ -96,7 +100,7 @@ fn decode_input(input: &str, text: &str) -> Result<LayoutInfo, String> {
             for w in &generated.warnings {
                 eprintln!("warning: {w}");
             }
-            rynk_kle::decode_layout(&generated.inner_layout_toml)
+            rynk_kle::decode_layout(&generated.layout_toml)
         }
         // Not JSON but named like it: report the JSON error, not a TOML one.
         Err(e) if input.ends_with(".json") => Err(format!("invalid JSON in {input}: {e}")),
@@ -159,16 +163,16 @@ variant 'default': 2 keys, 3u × 1u
 
     #[test]
     fn numpad_snapshot() {
-        // The nrf52840_ble example numpad: 2u-tall Plus/Enter (@2uv) spanning
-        // two rows and a 2u-wide zero — pins the junction merging.
+        // The nrf52840_ble example numpad: 2u-tall Plus/Enter (@2u_tall)
+        // spanning two rows and a 2u-wide zero — pins the junction merging.
         let toml = r#"
 rows = 5
 cols = 4
 map = """
 (0,0) (0,1) (0,2) (0,3)
-(1,0) (1,1) (1,2) (1,3,@2uv)
+(1,0) (1,1) (1,2) (1,3,@2u_tall)
 (2,0) (2,1) (2,2)
-(3,0) (3,1) (3,2) (3,3,@2uv)
+(3,0) (3,1) (3,2) (3,3,@2u_tall)
 (4,0,@2u) (4,1)
 """
 "#;
@@ -232,7 +236,7 @@ variant 'default': 17 keys, 4u × 5u
         let info = decode_input("vial.json", vial).unwrap();
         let keys = &info.variants[0].keys;
         assert_eq!(keys.len(), 2);
-        assert!((keys[1].w - 2.0).abs() < 1e-3);
+        assert!((keys[1].rect.w - 2.0).abs() < 1e-3);
 
         // A raw KLE "Download JSON" export: metadata object first, label
         // legends only — positions are assigned row-major.
@@ -241,7 +245,7 @@ variant 'default': 17 keys, 4u × 5u
         let v = &info.variants[0];
         assert_eq!(v.keys.len(), 3);
         assert_eq!((v.keys[2].row, v.keys[2].col), (1, 0));
-        assert!((v.keys[2].w - 1.5).abs() < 1e-3);
+        assert!((v.keys[2].rect.w - 1.5).abs() < 1e-3);
     }
 
     #[test]

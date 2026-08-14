@@ -157,13 +157,14 @@ pub fn render_variant(v: &Variant, is_default: bool) -> String {
         max.1 = max.1.max(y + h / 2.0);
     };
     for k in &v.keys {
-        grow(k.x, k.y, k.w, k.h);
+        grow(k.rect.x, k.rect.y, k.rect.w, k.rect.h);
         if let Some(r2) = &k.rect2 {
             grow(r2.x, r2.y, r2.w, r2.h);
         }
     }
     for e in &v.encoders {
-        grow(e.x, e.y, e.w, e.h);
+        // Encoders are fixed 1u knobs: center only.
+        grow(e.x, e.y, 1.0, 1.0);
     }
 
     let n = v.keys.len();
@@ -188,7 +189,7 @@ pub fn render_variant(v: &Variant, is_default: bool) -> String {
                 label.push(format!("{}°", k.r));
             }
             Item {
-                b: CellBox::new(k.x, k.y, k.w, k.h, min.0, min.1),
+                b: CellBox::new(k.rect.x, k.rect.y, k.rect.w, k.rect.h, min.0, min.1),
                 b2: k
                     .rect2
                     .as_ref()
@@ -198,15 +199,10 @@ pub fn render_variant(v: &Variant, is_default: bool) -> String {
             }
         })
         .chain(v.encoders.iter().map(|e| {
-            let mut label = vec![format!("E{}", e.id)];
-            if e.r != 0.0 {
-                label.push(format!("{}°", e.r));
-            }
-            // Rotation arrows mark the knob as rotary; on a 1u knob they fit
-            // only when no angle claims the second interior row (label() clips).
-            label.push("↺ ↻".to_string());
+            // A fixed 1u knob, never resized or angled; the arrows mark it rotary.
+            let label = vec![format!("E{}", e.id), "↺ ↻".to_string()];
             Item {
-                b: CellBox::new(e.x, e.y, e.w, e.h, min.0, min.1),
+                b: CellBox::new(e.x, e.y, 1.0, 1.0, min.0, min.1),
                 b2: None,
                 round: true,
                 label,

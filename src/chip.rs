@@ -27,6 +27,7 @@ pub(crate) fn get_chip_options(split: bool) -> Vec<&'static str> {
             "Pi Pico W",
             "esp32c3",
             "esp32c6",
+            "esp32h2",
             "esp32s3",
         ]
     } else {
@@ -41,6 +42,7 @@ pub(crate) fn get_chip_options(split: bool) -> Vec<&'static str> {
             "esp32c3",
             "esp32s3",
             "esp32c6",
+            "esp32h2",
             "nice!nano_v2",
             "XIAO BLE",
             "nice!nano",
