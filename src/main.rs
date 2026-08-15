@@ -162,7 +162,7 @@ async fn download_project_template(
     project_info: &ProjectInfo,
     commit_or_branch: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let user = "HaoboGu";
+    let user = "rmk-rs";
     let repo = "rmk-template";
 
     // Build download URL
