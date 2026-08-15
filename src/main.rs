@@ -16,6 +16,8 @@ use zip::ZipArchive;
 mod args;
 mod chip;
 mod keyboard_toml;
+mod layout_cmd;
+mod render;
 mod version;
 
 #[tokio::main]
@@ -44,6 +46,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         args::Commands::GetProjectName { keyboard_toml_path } => {
             let project_info = parse_keyboard_toml(&keyboard_toml_path, None)?;
             println!("{}", project_info.project_name);
+            Ok(())
+        }
+        args::Commands::Layout { command } => {
+            let result = match command {
+                args::LayoutCommands::Convert {
+                    input,
+                    output,
+                    to_vial,
+                    no_validate,
+                } => layout_cmd::convert(&input, output.as_deref(), to_vial, !no_validate),
+                args::LayoutCommands::Show { input, variant } => layout_cmd::show(&input, variant.as_deref()),
+            };
+            // The layout tools speak plain stderr + exit code (their output is
+            // piped/captured), not the interactive error style of create/init.
+            if let Err(e) = result {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
             Ok(())
         }
     }

@@ -1,0 +1,11 @@
+# Generated from tests/fixtures/kle_rowcol.json by rmkit — review the geometry. The source
+# carries no keycodes, so author the [keymap] yourself: its `keys` follow the
+# map's key order, plus one ["cw", "ccw"] pair per encoder in `encoders`.
+
+[layout]
+rows = 2
+cols = 3
+map = """
+(0,0) (0,1) (0,2)
+(1,0,@2u) (1,2)
+"""

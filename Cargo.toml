@@ -9,9 +9,11 @@ description = "rmkit is a toolkit set for RMK keyboard firmware"
 license = "Apache-2.0"
 
 [dependencies]
-# TODO: back to `version = "0.7"` once rmk-config 0.7.0 is on crates.io — a git
-# dependency cannot be published.
+# TODO: back to crates.io versions (rmk-config = "0.7", rynk-kle) once they are
+# published — a git dependency cannot be published.
 rmk-config = { git = "https://github.com/rmk-rs/rmk", rev = "93726512f2fb383cdb5a419b09ff181c7c123b5f" }
+# The KLE/Vial ↔ [layout] conversion engine; `rmkit layout` is CLI glue over it.
+rynk-kle = { git = "https://github.com/rmk-rs/rmk", rev = "93726512f2fb383cdb5a419b09ff181c7c123b5f" }
 clap = { version = "4.5.23", features = ["derive", "string"] }
 toml = "0.9.8"
 serde = "1.0"
