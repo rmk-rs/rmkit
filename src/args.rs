@@ -11,7 +11,8 @@ pub struct Args {
 pub enum Commands {
     /// Create a new RMK project from keyboard.toml and vial.json
     Create {
-        /// Path to keyboard.toml file
+        /// Path to keyboard.toml file. A Cargo.toml or memory.x next to it
+        /// replaces the template's copy verbatim.
         #[arg(long)]
         keyboard_toml_path: Option<String>,
 

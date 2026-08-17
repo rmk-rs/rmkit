@@ -33,6 +33,8 @@ Now rmkit can be used to generate RMK project directly from `keyboard.toml` and 
     rmkit create --keyboard-toml-path keyboard.toml --vial-json-path vial.json
     ```
 
+    A `Cargo.toml` or `memory.x` next to `keyboard.toml` replaces the template's copy as-is — use it to add Cargo features, pin dependencies, or change the flash layout. When you provide `Cargo.toml`, rmkit no longer adjusts the `rmk` features for you.
+
 3. Or, you can create RMK project from project template
 
     ```
