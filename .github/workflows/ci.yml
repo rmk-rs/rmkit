@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt · clippy · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        run: cargo fmt --check
+
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: build
+        run: cargo build --locked
+
+      - name: Smoke-test the bundled keyboard.toml
+        run: |
+          set -euo pipefail
+          test "$(cargo run --quiet -- get-chip --keyboard-toml-path keyboard.toml)" = "nrf52840"
+          test "$(cargo run --quiet -- get-project-name --keyboard-toml-path keyboard.toml)" = "RMK_Keyboard"
+
+  publishable:
+    name: publishable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # A git dependency silently blocks `cargo publish`, and the failure only
+      # surfaces at release time. Catch it on every PR instead.
+      - name: Reject git dependencies
+        run: |
+          if grep -q 'source = "git+' Cargo.lock; then
+            echo "::error::Cargo.lock contains a git dependency; rmkit cannot be published."
+            grep -n 'source = "git+' Cargo.lock
+            exit 1
+          fi
+
+      - name: cargo publish --dry-run
+        run: cargo publish --dry-run --locked

@@ -21,7 +21,7 @@ pub async fn resolve_template_version(version: Option<&str>) -> Result<String, B
     match version {
         Some(v) => {
             if v == "latest" || v == "main" {
-                return Ok("main".to_string())
+                return Ok("main".to_string());
             }
 
             // User provided a version, validate it
