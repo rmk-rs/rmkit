@@ -46,6 +46,15 @@ TEMPLATE_REPO = "rmk-rs/rmk-template"
 
 USER_AGENT = "rmkit-upstream-drift-check"
 
+# Crates rmkit depends on that live in the rmk workspace, mapped to their
+# manifest path inside an rmk tree. Each one pins rmkit to a point in rmk's
+# history, so each one can drift. Add a crate here when rmkit starts depending
+# on it.
+TRACKED_DEPS = {
+    "rmk-config": "rmk-config/Cargo.toml",
+    "rynk-kle": "rynk/rynk-kle/Cargo.toml",
+}
+
 # Example keyboard.toml files that rmkit is not expected to parse. Add entries
 # here (with a reason) rather than weakening the check.
 EXPECTED_PARSE_FAILURES: dict[str, str] = {}
@@ -147,16 +156,25 @@ def resolve_rmk_tag(version: str) -> str:
 # behaviour, a refactor should force a look at this file.
 
 
-def extract_rmk_config_req(cargo_toml: str) -> str:
-    manifest = tomllib.loads(cargo_toml)
-    dep = manifest["dependencies"]["rmk-config"]
-    if isinstance(dep, str):
-        return dep
-    if "version" in dep:
-        return dep["version"]
-    if "git" in dep:
-        return f"git:{dep.get('rev', dep.get('branch', 'HEAD'))}"
-    raise RuntimeError(f"cannot read an rmk-config version requirement from {dep!r}")
+def extract_dep_reqs(cargo_toml: str) -> dict[str, str]:
+    """Read rmkit's requirement on each tracked rmk-workspace crate."""
+    dependencies = tomllib.loads(cargo_toml)["dependencies"]
+    reqs: dict[str, str] = {}
+    for name in TRACKED_DEPS:
+        dep = dependencies.get(name)
+        if dep is None:
+            continue  # rmkit did not depend on this crate at this revision
+        if isinstance(dep, str):
+            reqs[name] = dep
+        elif "version" in dep:
+            reqs[name] = dep["version"]
+        elif "git" in dep:
+            reqs[name] = f"git:{dep.get('rev', dep.get('branch', 'HEAD'))}"
+        else:
+            raise RuntimeError(f"cannot read a version requirement for {name} from {dep!r}")
+    if not reqs:
+        raise RuntimeError(f"rmkit depends on none of {sorted(TRACKED_DEPS)}")
+    return reqs
 
 
 def extract_feature_names(keyboard_toml_rs: str) -> tuple[set[str], set[str]]:
@@ -236,21 +254,46 @@ class Upstream:
 
     label: str
     rmk_version: str
-    rmk_config_version: str
     rmk_types_version: str
+    dep_versions: dict[str, str]
     features: dict[str, list[str]]
     example_configs: list[Path]
 
 
+def crate_version(tree: Path, manifest_path: str) -> str | None:
+    """None when the crate does not exist in this tree — older rmk releases
+    predate some of the workspace members rmkit now depends on."""
+    manifest = tree / manifest_path
+    if not manifest.is_file():
+        return None
+    version = tomllib.loads(manifest.read_text())["package"]["version"]
+    if isinstance(version, str):
+        return version
+    # `version.workspace = true` — resolve against the nearest ancestor
+    # manifest that defines `[workspace.package]`. rynk's members do this.
+    for directory in manifest.parent.parents:
+        candidate = directory / "Cargo.toml"
+        if not candidate.is_file():
+            continue
+        inherited = tomllib.loads(candidate.read_text()).get("workspace", {}).get("package", {})
+        if "version" in inherited:
+            return inherited["version"]
+        if directory == tree:
+            break
+    raise RuntimeError(f"cannot resolve the workspace version for {manifest_path}")
+
+
 def read_upstream(tree: Path, label: str) -> Upstream:
     rmk_manifest = tomllib.loads((tree / "rmk" / "Cargo.toml").read_text())
-    config_manifest = tomllib.loads((tree / "rmk-config" / "Cargo.toml").read_text())
-    types_manifest = tomllib.loads((tree / "rmk-types" / "Cargo.toml").read_text())
     return Upstream(
         label=label,
         rmk_version=rmk_manifest["package"]["version"],
-        rmk_config_version=config_manifest["package"]["version"],
-        rmk_types_version=types_manifest["package"]["version"],
+        rmk_types_version=crate_version(tree, "rmk-types/Cargo.toml"),
+        dep_versions={
+            name: version
+            for name, path in TRACKED_DEPS.items()
+            if (version := crate_version(tree, path)) is not None
+        },
         features=rmk_manifest.get("features", {}),
         # `use_config` only: those are the full keyboard.toml files rmkit is
         # built to consume. The `use_rust` examples carry partial configs with
@@ -265,29 +308,45 @@ def read_upstream(tree: Path, label: str) -> Upstream:
 # --------------------------------------------------------------------------
 
 
-def check_versions(report: Report, rmk_config_req: str, upstream: Upstream) -> None:
+DRIFT_CONSEQUENCE = {
+    "rmk-config": "rmkit parses a different keyboard.toml schema than the projects it generates",
+    "rynk-kle": "`rmkit layout` converts against a different layout format than rmk understands",
+}
+
+
+def check_versions(report: Report, reqs: dict[str, str], upstream: Upstream) -> None:
+    shipped = " · ".join(f"{name} {version}" for name, version in upstream.dep_versions.items())
     report.info(
         "versions",
-        f"rmk {upstream.rmk_version} · rmk-config {upstream.rmk_config_version} "
-        f"· rmk-types {upstream.rmk_types_version} ({upstream.label})",
+        f"rmk {upstream.rmk_version} · rmk-types {upstream.rmk_types_version} "
+        f"· {shipped} ({upstream.label})",
     )
-    report.info("versions", f"rmkit requires rmk-config {rmk_config_req}")
+    report.info(
+        "versions",
+        "rmkit requires " + ", ".join(f"{name} {req}" for name, req in reqs.items()),
+    )
 
-    if rmk_config_req.startswith("git:"):
-        report.warn(
-            "versions",
-            f"rmkit depends on rmk-config via git ({rmk_config_req[4:]}); it cannot be "
-            "published in this state",
-        )
-        return
-
-    if not req_admits(rmk_config_req, upstream.rmk_config_version):
-        report.fail(
-            "versions",
-            f"rmkit requires rmk-config {rmk_config_req}, but {upstream.label} ships "
-            f"rmk-config {upstream.rmk_config_version} — rmkit parses a different "
-            "keyboard.toml schema than the projects it generates",
-        )
+    for name, req in reqs.items():
+        if req.startswith("git:"):
+            report.warn(
+                "versions",
+                f"rmkit depends on {name} via git ({req[4:]}); it cannot be published "
+                "in this state",
+            )
+            continue
+        shipped_version = upstream.dep_versions.get(name)
+        if shipped_version is None:
+            report.fail(
+                "versions",
+                f"rmkit requires {name}, but {upstream.label} has no such crate",
+            )
+            continue
+        if not req_admits(req, shipped_version):
+            report.fail(
+                "versions",
+                f"rmkit requires {name} {req}, but {upstream.label} ships {name} "
+                f"{shipped_version} — {DRIFT_CONSEQUENCE.get(name, 'rmkit is out of step')}",
+            )
 
 
 def check_features(report: Report, disabled: set[str], enabled: set[str], upstream: Upstream) -> None:
@@ -433,7 +492,7 @@ def run_main_axis(workdir: Path) -> Report:
     disabled, enabled = extract_feature_names(keyboard_toml_rs)
     split_chips, unibody_chips = extract_chip_options(chip_rs)
 
-    check_versions(report, extract_rmk_config_req(cargo_toml), upstream)
+    check_versions(report, extract_dep_reqs(cargo_toml), upstream)
     check_features(report, disabled, enabled, upstream)
     check_config_schema(report, build_rmkit(), upstream)
     check_templates(report, split_chips, unibody_chips, extract_board_chip_map(chip_rs))
@@ -463,7 +522,7 @@ def run_release_axis(workdir: Path) -> Report:
     disabled, enabled = extract_feature_names(keyboard_toml_rs)
     split_chips, unibody_chips = extract_chip_options(chip_rs)
 
-    check_versions(report, extract_rmk_config_req(cargo_toml), upstream)
+    check_versions(report, extract_dep_reqs(cargo_toml), upstream)
     check_features(report, disabled, enabled, upstream)
     # No config-schema check here: it is subsumed by the version check. If the
     # released rmkit and the released rmk resolve the same rmk-config, they

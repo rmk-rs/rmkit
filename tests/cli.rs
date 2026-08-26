@@ -30,6 +30,7 @@ fn ansi60_split_backspace_converts_and_validates() {
     assert!(stdout.contains("(1,0,@1.5u)")); // 1.5u tab
     assert!(stdout.contains("(2,0,@1.75u)")); // 1.75u caps
     assert!(stdout.contains("(4,3,@6.25u)")); // 6.25u space
+
     // Caps are all stock widths; the only generated shape is the 1u reset the
     // split-backspace variant uses to shrink (0,13).
     assert!(stdout.contains("s1 = { w = 1.0 }"));
@@ -114,8 +115,9 @@ fn converted_toml_fixtures_are_up_to_date() {
             continue;
         }
         let golden = json.with_extension("toml");
-        let expected = std::fs::read_to_string(&golden)
-            .unwrap_or_else(|_| panic!("missing golden {golden:?} — regenerate (see comment above)"));
+        let expected = std::fs::read_to_string(&golden).unwrap_or_else(|_| {
+            panic!("missing golden {golden:?} — regenerate (see comment above)")
+        });
         let name = json.file_name().unwrap().to_string_lossy();
         let out = Command::new(env!("CARGO_BIN_EXE_rmkit"))
             .current_dir(env!("CARGO_MANIFEST_DIR"))
@@ -123,12 +125,22 @@ fn converted_toml_fixtures_are_up_to_date() {
             .arg(format!("tests/fixtures/{name}"))
             .output()
             .expect("failed to run rmkit");
-        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
         let stdout = String::from_utf8_lossy(&out.stdout);
-        assert_eq!(stdout, expected, "stale golden for {name} — regenerate (see comment above)");
+        assert_eq!(
+            stdout, expected,
+            "stale golden for {name} — regenerate (see comment above)"
+        );
         checked += 1;
     }
-    assert!(checked >= 5, "expected the committed fixture pairs, found {checked}");
+    assert!(
+        checked >= 5,
+        "expected the committed fixture pairs, found {checked}"
+    );
 }
 
 #[test]
@@ -145,15 +157,26 @@ fn layout_show_accepts_vial_and_kle_json() {
     // A vial.json renders directly, without converting to keyboard.toml first.
     let out = show("corne.json", &[]);
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert!(stdout.contains("42 keys"), "stdout:\n{stdout}");
     assert!(stdout.contains("│ 0,0 │"), "stdout:\n{stdout}");
 
     // VIA layout options become variants, so --variant works on a vial.json.
     let out = show("ansi60_splitbs.json", &["--variant", "Split_Backspace"]);
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    assert!(stdout.contains("variant 'Split_Backspace'"), "stdout:\n{stdout}");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        stdout.contains("variant 'Split_Backspace'"),
+        "stdout:\n{stdout}"
+    );
 
     // A raw KLE export renders too, with the row-major fallback warning.
     let out = show("kle_export.json", &[]);

@@ -56,7 +56,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     to_vial,
                     no_validate,
                 } => layout_cmd::convert(&input, output.as_deref(), to_vial, !no_validate),
-                args::LayoutCommands::Show { input, variant } => layout_cmd::show(&input, variant.as_deref()),
+                args::LayoutCommands::Show { input, variant } => {
+                    layout_cmd::show(&input, variant.as_deref())
+                }
             };
             // The layout tools speak plain stderr + exit code (their output is
             // piped/captured), not the interactive error style of create/init.

@@ -34,6 +34,9 @@ jobs:
       - name: build
         run: cargo build --locked
 
+      - name: test
+        run: cargo test --locked
+
       - name: Smoke-test the bundled keyboard.toml
         run: |
           set -euo pipefail
