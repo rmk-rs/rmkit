@@ -16,6 +16,8 @@ use zip::ZipArchive;
 mod args;
 mod chip;
 mod keyboard_toml;
+mod layout_cmd;
+mod render;
 mod version;
 
 #[tokio::main]
@@ -44,6 +46,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
         args::Commands::GetProjectName { keyboard_toml_path } => {
             let project_info = parse_keyboard_toml(&keyboard_toml_path, None)?;
             println!("{}", project_info.project_name);
+            Ok(())
+        }
+        args::Commands::Layout { command } => {
+            let result = match command {
+                args::LayoutCommands::Convert {
+                    input,
+                    output,
+                    to_vial,
+                    no_validate,
+                } => layout_cmd::convert(&input, output.as_deref(), to_vial, !no_validate),
+                args::LayoutCommands::Show { input, variant } => {
+                    layout_cmd::show(&input, variant.as_deref())
+                }
+            };
+            // The layout tools speak plain stderr + exit code (their output is
+            // piped/captured), not the interactive error style of create/init.
+            if let Err(e) = result {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
             Ok(())
         }
     }
@@ -86,14 +108,42 @@ async fn create_project(
     )?;
     fs::copy(&vial_json_path, project_info.target_dir.join("vial.json"))?;
 
+    // A Cargo.toml / memory.x next to keyboard.toml is the user's, verbatim
+    let user_dir = Path::new(&keyboard_toml_path)
+        .parent()
+        .unwrap_or(Path::new(""));
+    let cargo_toml_user_owned = copy_user_owned_files(user_dir, &project_info.target_dir)?;
+
     // Post-process
-    post_process(project_info)?;
+    post_process(project_info, cargo_toml_user_owned)?;
 
     Ok(())
 }
 
+/// Files that replace the template's copy when they sit next to keyboard.toml
+const USER_OWNED_FILES: [&str; 2] = ["Cargo.toml", "memory.x"];
+
+/// Copy the user's own project files over the generated project. Returns whether
+/// Cargo.toml was among them — the user then owns the feature list too.
+fn copy_user_owned_files(user_dir: &Path, target_dir: &Path) -> Result<bool, Box<dyn Error>> {
+    let mut cargo_toml_user_owned = false;
+    for name in USER_OWNED_FILES {
+        let src = user_dir.join(name);
+        if !src.is_file() {
+            continue;
+        }
+        fs::copy(&src, target_dir.join(name))?;
+        println!("📄 Using {} (replaces the template's)", src.display());
+        cargo_toml_user_owned |= name == "Cargo.toml";
+    }
+    Ok(cargo_toml_user_owned)
+}
+
 /// Postprocessing after generating project
-fn post_process(project_info: ProjectInfo) -> Result<(), Box<dyn Error>> {
+fn post_process(
+    project_info: ProjectInfo,
+    cargo_toml_user_owned: bool,
+) -> Result<(), Box<dyn Error>> {
     // Replace {{ project_name }} in toml/json files
     replace_in_folder(
         &project_info,
@@ -118,6 +168,13 @@ fn post_process(project_info: ProjectInfo) -> Result<(), Box<dyn Error>> {
         "{{ uf2_key }}",
         &project_info.uf2_key,
     )?;
+
+    // The user's Cargo.toml is used as-is; keyboard.toml/feature mismatches are
+    // reported by rmk-macro at build time.
+    if cargo_toml_user_owned {
+        println!("Skipping rmk feature adjustments: Cargo.toml is user-provided");
+        return Ok(());
+    }
 
     // Disable some default features
     if !project_info.disabled_default_feature.is_empty() {
@@ -162,7 +219,7 @@ async fn download_project_template(
     project_info: &ProjectInfo,
     commit_or_branch: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let user = "HaoboGu";
+    let user = "rmk-rs";
     let repo = "rmk-template";
 
     // Build download URL
@@ -259,7 +316,7 @@ async fn init_project(
     }
 
     // Post-process
-    post_process(project_info)?;
+    post_process(project_info, false)?;
 
     Ok(())
 }
@@ -575,4 +632,37 @@ fn enable_rmk_features(target_dir: &PathBuf, features: Vec<String>) -> Result<()
         .map_err(|e| format!("Failed to write updated Cargo.toml: {}", e))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_owned_files_replace_template_copies() {
+        let root = std::env::temp_dir().join(format!("rmkit_user_owned_{}", std::process::id()));
+        let (user_dir, target_dir) = (root.join("user"), root.join("target"));
+        fs::create_dir_all(&user_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("Cargo.toml"), "template").unwrap();
+        fs::write(target_dir.join("memory.x"), "template").unwrap();
+        let generated = |name: &str| fs::read_to_string(target_dir.join(name)).unwrap();
+
+        // Nothing next to keyboard.toml: template files stay, Cargo.toml is not user-owned
+        assert!(!copy_user_owned_files(&user_dir, &target_dir).unwrap());
+        assert_eq!(generated("Cargo.toml"), "template");
+
+        // Only memory.x provided: it replaces the template's, Cargo.toml is still rmkit's
+        fs::write(user_dir.join("memory.x"), "user").unwrap();
+        assert!(!copy_user_owned_files(&user_dir, &target_dir).unwrap());
+        assert_eq!(generated("memory.x"), "user");
+        assert_eq!(generated("Cargo.toml"), "template");
+
+        // Cargo.toml provided: replaced verbatim and reported as user-owned
+        fs::write(user_dir.join("Cargo.toml"), "user").unwrap();
+        assert!(copy_user_owned_files(&user_dir, &target_dir).unwrap());
+        assert_eq!(generated("Cargo.toml"), "user");
+
+        fs::remove_dir_all(&root).unwrap();
+    }
 }

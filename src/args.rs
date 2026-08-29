@@ -11,7 +11,8 @@ pub struct Args {
 pub enum Commands {
     /// Create a new RMK project from keyboard.toml and vial.json
     Create {
-        /// Path to keyboard.toml file
+        /// Path to keyboard.toml file. A Cargo.toml or memory.x next to it
+        /// replaces the template's copy verbatim.
         #[arg(long)]
         keyboard_toml_path: Option<String>,
 
@@ -61,5 +62,40 @@ pub enum Commands {
         /// Path to keyboard.toml file
         #[arg(long)]
         keyboard_toml_path: String,
+    },
+    /// Physical-layout tools: convert KLE/Vial layouts and preview [layout] geometry
+    Layout {
+        #[command(subcommand)]
+        command: LayoutCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LayoutCommands {
+    /// Convert a KLE JSON export or vial.json into an RMK [layout] section (or back with --to-vial)
+    Convert {
+        /// Path to a KLE JSON export or a vial.json (a keyboard.toml with --to-vial)
+        input: String,
+
+        /// Write the result to FILE instead of stdout
+        #[arg(short, long)]
+        output: Option<String>,
+
+        /// Reverse: a keyboard.toml's [layout] → a minimal vial.json
+        #[arg(long)]
+        to_vial: bool,
+
+        /// Skip the rmk-config round-trip check (forward only)
+        #[arg(long)]
+        no_validate: bool,
+    },
+    /// Render a physical layout (keyboard.toml, vial.json, or KLE export) as box-drawing art
+    Show {
+        /// Path to a keyboard.toml (or bare [layout] snippet), a vial.json, or a raw KLE JSON export
+        input: String,
+
+        /// Render only this [[layout.variant]] (default: all)
+        #[arg(long)]
+        variant: Option<String>,
     },
 }

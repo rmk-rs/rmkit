@@ -1,0 +1,13 @@
+# Generated from tests/fixtures/kle_export.json by rmkit — review the geometry. The source
+# carries no keycodes, so author the [keymap] yourself: its `keys` follow the
+# map's key order, plus one ["cw", "ccw"] pair per encoder in `encoders`.
+
+[layout]
+rows = 3
+cols = 4
+map = """
+(0,0) (0,1) (0,2) (0,3)
+(1,0,@1.5u) (1,1) (1,2)
+[y=0.5]
+[1.0] (2,0) (2,1,@2u)
+"""
