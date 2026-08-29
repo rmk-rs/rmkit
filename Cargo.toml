@@ -9,12 +9,13 @@ description = "rmkit is a toolkit set for RMK keyboard firmware"
 license = "Apache-2.0"
 
 [dependencies]
-# Pins the `keyboard.toml` schema rmkit understands: 0.7.0 is the config crate
+# Pins the `keyboard.toml` schema rmkit understands: 0.8.0 is the config crate
 # RMK 0.9.0 ships. Bump it in lockstep with each RMK release, since the structs
 # are `deny_unknown_fields` and reject keys added by later versions.
-rmk-config = "0.7.0"
+rmk-config = "0.8.0"
 # The KLE/Vial ↔ [layout] conversion engine; `rmkit layout` is CLI glue over it.
-rynk-kle = "0.2.0"
+# Its 0.3.0 pins rmk-config =0.8.0, so the two must move together.
+rynk-kle = "0.3.0"
 clap = { version = "4.5.23", features = ["derive", "string"] }
 toml = "0.9.8"
 serde = "1.0"

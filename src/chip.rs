@@ -36,6 +36,7 @@ pub(crate) fn get_chip_options(split: bool) -> Vec<&'static str> {
             "rp2040",
             "Pi Pico W",
             "nrf52832",
+            "nrf52833",
             "esp32c3",
             "esp32s3",
             "esp32c6",
