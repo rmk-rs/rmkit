@@ -1754,8 +1754,7 @@ dependencies = [
 [[package]]
 name = "rmk-config"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd144f2407222f7790a3f9386758625d5e589e8fc5f9d850e9383f9773a55eb3"
+source = "git+https://github.com/rmk-rs/rmk?rev=5f06e5bfda227df7240d8ad148f704bb27667f0d#5f06e5bfda227df7240d8ad148f704bb27667f0d"
 dependencies = [
  "config",
  "miniz_oxide 0.9.1",
@@ -1772,8 +1771,7 @@ dependencies = [
 [[package]]
 name = "rmk-types"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e99d79529fd045848d7692504eb733fb4dd7407f2ba1cf11397508cc68125140"
+source = "git+https://github.com/rmk-rs/rmk?rev=5f06e5bfda227df7240d8ad148f704bb27667f0d#5f06e5bfda227df7240d8ad148f704bb27667f0d"
 dependencies = [
  "bitfield-struct",
  "cobs",
@@ -1881,8 +1879,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 [[package]]
 name = "rynk"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1cabd1d713df36886cce6c14d0f472156d17a324f9f635c5d64a562f015cd26"
+source = "git+https://github.com/rmk-rs/rmk?rev=5f06e5bfda227df7240d8ad148f704bb27667f0d#5f06e5bfda227df7240d8ad148f704bb27667f0d"
 dependencies = [
  "critical-section",
  "embassy-futures",
@@ -1900,8 +1897,7 @@ dependencies = [
 [[package]]
 name = "rynk-kle"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23357b64d8879311b7289b2f844e07a2ec34a2c6a3ece9002e1d9213e126fb8"
+source = "git+https://github.com/rmk-rs/rmk?rev=5f06e5bfda227df7240d8ad148f704bb27667f0d#5f06e5bfda227df7240d8ad148f704bb27667f0d"
 dependencies = [
  "kle-serial",
  "rmk-config",
