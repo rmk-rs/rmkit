@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ["v*"]
   pull_request:
 
 concurrency:
@@ -51,15 +52,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      # A git dependency silently blocks `cargo publish`, and the failure only
-      # surfaces at release time. Catch it on every PR instead.
-      - name: Reject git dependencies
+      # A git dependency blocks `cargo publish`, but the rev pin is deliberate
+      # between RMK releases (see Cargo.toml), so only fail on release tags.
+      - name: Check for git dependencies
+        id: git_deps
         run: |
           if grep -q 'source = "git+' Cargo.lock; then
-            echo "::error::Cargo.lock contains a git dependency; rmkit cannot be published."
             grep -n 'source = "git+' Cargo.lock
-            exit 1
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              echo "::error::Cargo.lock contains a git dependency; rmkit cannot be published."
+              exit 1
+            fi
+            echo "::warning::Cargo.lock contains a git dependency; switch back to crates.io before releasing."
+            echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: cargo publish --dry-run
+        if: steps.git_deps.outputs.present != 'true'
         run: cargo publish --dry-run --locked
