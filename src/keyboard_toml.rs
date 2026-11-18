@@ -1,3 +1,5 @@
+use crate::chip::get_board_chip_map;
+use rmk_config::resolved::hardware::BoardConfig;
 use rmk_config::KeyboardTomlConfig;
 use std::{env, fs, path::PathBuf, process};
 
@@ -65,36 +67,62 @@ pub(crate) fn parse_keyboard_toml(
         disabled_default_feature.push("host_lock".to_string());
     }
 
-    let matrix_type = match hardware.board {
-        rmk_config::resolved::hardware::BoardConfig::Split(_) => "split".to_string(),
-        rmk_config::resolved::hardware::BoardConfig::UniBody(_) => "normal".to_string(),
+    let chip = hardware.chip.chip;
+    let template = hardware
+        .chip
+        .board
+        .as_deref()
+        .and_then(|board| get_board_chip_map().get(board).copied())
+        .unwrap_or(&chip);
+    let folder = match hardware.board {
+        BoardConfig::Split(_) => format!("{template}_split"),
+        BoardConfig::UniBody(_) => template.to_owned(),
     };
 
-    let chip_model = hardware.chip;
-    let chip_or_board = if let Some(board) = chip_model.board {
-        board
+    let uf2_key = if chip.starts_with("stm32") {
+        chip[..7].to_string()
     } else {
-        chip_model.chip.clone()
-    };
-    let folder = if matrix_type == "split" {
-        format!("{}_{}", chip_or_board, matrix_type)
-    } else {
-        chip_or_board.clone()
-    };
-
-    let uf2_key = if chip_model.chip.starts_with("stm32") {
-        chip_model.chip[..7].to_string()
-    } else {
-        chip_model.chip.clone()
+        chip.clone()
     };
 
     Ok(ProjectInfo {
         project_name,
         target_dir: project_dir,
         remote_folder: folder,
-        chip: chip_or_board,
+        chip,
         uf2_key,
         disabled_default_feature,
         enabled_feature,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn board_aliases_resolve_to_chip_and_split_template() {
+        let dir = env::temp_dir().join(format!("rmkit-board-aliases-{}", process::id()));
+        fs::create_dir(&dir).unwrap();
+        let config_path = dir.join("keyboard.toml").to_str().unwrap().to_owned();
+        let target_dir = dir.join("project").to_str().unwrap().to_owned();
+        let fixture = include_str!("../keyboard.toml");
+
+        for (board, chip, template) in [
+            ("XIAO BLE", "nrf52840", "nrf52840_split"),
+            ("Pi Pico W", "rp2040", "pico_w_split"),
+        ] {
+            let config = fixture.replace("chip = \"nrf52840\"", &format!("board = \"{board}\""));
+            fs::write(&config_path, config).unwrap();
+            let project = parse_keyboard_toml(&config_path, Some(target_dir.clone())).unwrap();
+
+            assert_eq!(
+                (project.chip.as_str(), project.remote_folder.as_str()),
+                (chip, template),
+                "{board}"
+            );
+        }
+
+        fs::remove_dir_all(dir).unwrap();
+    }
 }
