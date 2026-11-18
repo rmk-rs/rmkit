@@ -2,34 +2,28 @@
 name = "rmkit"
 version = "0.1.1"
 edition = "2021"
-homepage = "https://github.com/rmk-rs/rmkit"
 repository = "https://github.com/rmk-rs/rmkit"
 resolver = "2"
 description = "rmkit is a toolkit set for RMK keyboard firmware"
 license = "Apache-2.0"
 
 [dependencies]
-# Pins the `keyboard.toml` schema rmkit understands: 0.8.0 is the config crate
-# RMK 0.9.0 ships. Bump it in lockstep with each RMK release, since the structs
-# are `deny_unknown_fields` and reject keys added by later versions.
 rmk-config = "0.8.0"
-# The KLE/Vial ↔ [layout] conversion engine; `rmkit layout` is CLI glue over it.
-# Its 0.3.0 pins rmk-config =0.8.0, so the two must move together.
 rynk-kle = "0.3.0"
 clap = { version = "4.5.23", features = ["derive", "string"] }
-toml = "0.9.8"
+toml = "1"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-reqwest = { version = "0.12", default-features = false, features = ["json", "gzip", "stream", "rustls-tls"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "gzip", "stream", "rustls"] }
 tokio = { version = "1", features = ["full"] }
-zip = "4"
+zip = "9"
 futures = "0.3"
 futures-util = "0.3.31"
 walkdir = "2"
-inquire = "0.7.5"
-cargo_toml = "0.22"
-cargo_metadata = "0.20"
+inquire = "0.9"
+cargo_toml = "1"
+cargo_metadata = "0.23"
 
 [profile.release]
 codegen-units = 1
