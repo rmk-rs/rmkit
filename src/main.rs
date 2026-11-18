@@ -582,7 +582,7 @@ fn get_dependency_default_features(
     let dep = metadata
         .packages
         .iter()
-        .find(|p| p.name.to_string() == dependency)
+        .find(|p| p.name == dependency)
         .ok_or(format!("Failed to find {} in dependencies", dependency))?;
     dep.features
         .get("default")
